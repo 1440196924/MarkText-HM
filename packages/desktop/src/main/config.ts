@@ -4,6 +4,7 @@ import type { BrowserWindowConstructorOptions } from 'electron'
 export const isOsx: boolean = process.platform === 'darwin'
 export const isWindows: boolean = process.platform === 'win32'
 export const isLinux: boolean = process.platform === 'linux'
+export const isHarmonyOS: boolean = process.platform === 'openharmony'
 
 export const editorWinOptions: Readonly<BrowserWindowConstructorOptions> = Object.freeze({
   minWidth: 550,

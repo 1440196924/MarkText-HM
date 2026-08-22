@@ -7,6 +7,7 @@ import {
   type WebContents
 } from 'electron'
 import log from 'electron-log'
+import { isHarmonyOS } from '../config'
 import type { MenuTemplate, MenuTemplateItem, MenuPopupPosition } from '@shared/types/menu'
 
 const windowFromEvent = (event: IpcMainEvent): BrowserWindow | null =>
@@ -68,7 +69,16 @@ export const registerWindowHandlers = (): void => {
   })
   ipcMain.on('mt::win::close', (event) => {
     const win = windowFromEvent(event)
-    if (win) win.close()
+    if (!win) return
+    const isSettings = (win as unknown as { __marktextSettings?: boolean }).__marktextSettings === true
+    if (isHarmonyOS && isSettings) {
+      // win.close() triggers a NULL-deref crash (SIGSEGV in libelectron.so)
+      // inside the runtime's WillCloseWindow for the preferences window.
+      // Destroy directly (CloseNow path) to bypass the crashing path.
+      win.destroy()
+    } else {
+      win.close()
+    }
   })
   ipcMain.on('mt::win::set-fullscreen', (event, flag: boolean) => {
     const win = windowFromEvent(event)

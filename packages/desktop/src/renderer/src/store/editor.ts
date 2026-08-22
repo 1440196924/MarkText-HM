@@ -1774,6 +1774,27 @@ export const useEditorStore = defineStore('editor', {
       window.electron.ipcRenderer.on('mt::load-state', (_, state) => {
         this.RESTORE_BUFFERED_STATE(state)
       })
+    },
+
+    // HarmonyOS: a phone tapped this editor window to share an image. The main
+    // process forwards a `knock://pending` marker first (render a placeholder
+    // while the image is converted), then the real `data:image/jpeg;base64,...`
+    // which replaces the placeholder.
+    LISTEN_FOR_KNOCK_IMAGE(): void {
+      window.electron.ipcRenderer.on('mt::knock-image-received', (_: unknown, payload: { path?: string }) => {
+        ;(window.electron.ipcRenderer.send as (c: string, ...a: unknown[]) => void)(
+          'mt::knock-image-confirm',
+          JSON.stringify(payload)
+        )
+        const { path } = payload
+        if (!path) return
+        if (path === 'knock://pending') {
+          const token = `knock://pending-${Date.now()}`
+          bus.emit('insert-knock-placeholder', token)
+        } else if (path.startsWith('data:image/')) {
+          bus.emit('replace-knock-image', path)
+        }
+      })
     }
   }
 })

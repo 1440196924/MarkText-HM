@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <div
       v-if="showTitleBar"
@@ -83,54 +83,112 @@
       <div
         v-if="titleBarStyle === 'custom' && !isFullScreen && !isOsx"
         class="right-toolbar"
-        :class="[{ 'title-no-drag': titleBarStyle === 'custom' }]"
+        :class="[
+          { 'title-no-drag': titleBarStyle === 'custom' },
+          { 'os-harmonyos': isHarmonyOS }
+        ]"
       >
-        <div
-          class="frameless-titlebar-button frameless-titlebar-close"
-          @click.stop="handleCloseClick"
-        >
-          <div>
-            <svg
-              width="10"
-              height="10"
-            >
-              <path :d="windowIconClose" />
-            </svg>
+        <template v-if="isHarmonyOS">
+          <div
+            class="frameless-titlebar-button frameless-titlebar-close"
+            @click.stop="handleCloseClick"
+          >
+            <div>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 1024 1024"
+              >
+                <path :d="harmonyClosePath" />
+              </svg>
+            </div>
           </div>
-        </div>
-        <div
-          class="frameless-titlebar-button frameless-titlebar-toggle"
-          @click.stop="handleMaximizeClick"
-        >
-          <div>
-            <svg
-              width="10"
-              height="10"
-            >
-              <path
-                v-show="!isMaximized"
-                :d="windowIconMaximize"
-              />
-              <path
-                v-show="isMaximized"
-                :d="windowIconRestore"
-              />
-            </svg>
+          <div
+            class="frameless-titlebar-button frameless-titlebar-minimize"
+            @click.stop="handleMinimizeClick"
+          >
+            <div>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 1024 1024"
+              >
+                <path :d="harmonyMinimizePath" />
+              </svg>
+            </div>
           </div>
-        </div>
-        <div
-          class="frameless-titlebar-button frameless-titlebar-minimize"
-          @click.stop="handleMinimizeClick"
-        >
-          <div>
-            <svg
-              width="10"
-              height="10"
-            >
-              <path :d="windowIconMinimize" />
-            </svg>
+          <div
+            class="frameless-titlebar-button frameless-titlebar-toggle"
+            @click.stop="handleMaximizeClick"
+          >
+            <div>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 1024 1024"
+              >
+                <g transform="translate(1024, 0) scale(-1, 1)">
+                  <path
+                    v-show="!isMaximized"
+                    :d="harmonyMaximizePath"
+                  />
+                  <path
+                    v-show="isMaximized"
+                    :d="harmonyRestorePath"
+                  />
+                </g>
+              </svg>
+            </div>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <div
+            class="frameless-titlebar-button frameless-titlebar-close"
+            @click.stop="handleCloseClick"
+          >
+            <div>
+              <svg
+                width="10"
+                height="10"
+              >
+                <path :d="windowIconClose" />
+              </svg>
+            </div>
+          </div>
+          <div
+            class="frameless-titlebar-button frameless-titlebar-toggle"
+            @click.stop="handleMaximizeClick"
+          >
+            <div>
+              <svg
+                width="10"
+                height="10"
+              >
+                <path
+                  v-show="!isMaximized"
+                  :d="windowIconMaximize"
+                />
+                <path
+                  v-show="isMaximized"
+                  :d="windowIconRestore"
+                />
+              </svg>
+            </div>
+          </div>
+          <div
+            class="frameless-titlebar-button frameless-titlebar-minimize"
+            @click.stop="handleMinimizeClick"
+          >
+            <div>
+              <svg
+                width="10"
+                height="10"
+              >
+                <path :d="windowIconMinimize" />
+              </svg>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -141,9 +199,9 @@ import { usePreferencesStore } from '@/store/preferences.js'
 import { useLayoutStore } from '@/store/layout.js'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
-import { minimizePath, restorePath, maximizePath, closePath } from '../../assets/window-controls.js'
+import { minimizePath, restorePath, maximizePath, closePath, harmonyMinimizePath, harmonyRestorePath, harmonyMaximizePath, harmonyClosePath } from '../../assets/window-controls'
 import { PATH_SEPARATOR } from '../../config'
-import { isOsx as isOsxPlatform } from '@/util'
+import { isOsx as isOsxPlatform, isHarmonyOS as isHarmonyOSPlatform } from '@/util'
 import { shouldShowInAppTitleBar } from './visibility'
 import { useEditorStore } from '@/store/editor'
 import { useI18n } from 'vue-i18n'
@@ -171,6 +229,7 @@ const editorStore = useEditorStore()
 const { t } = useI18n()
 
 const isOsx = isOsxPlatform
+const isHarmonyOS = isHarmonyOSPlatform
 const HASH = {
   word: {
     short: 'W',
@@ -477,6 +536,26 @@ div.title > span {
   fill: #ffffff;
 }
 
+/* HarmonyOS window controls: glyph color follows the theme via currentColor,
+   close button gets the system red hover. */
+.os-harmonyos .frameless-titlebar-button {
+  width: 40px;
+  color: var(--sideBarColor);
+}
+.os-harmonyos .frameless-titlebar-button svg {
+  fill: currentColor;
+}
+.os-harmonyos .frameless-titlebar-minimize:hover,
+.os-harmonyos .frameless-titlebar-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+.os-harmonyos .frameless-titlebar-close:hover {
+  background-color: #e81123;
+}
+.os-harmonyos .frameless-titlebar-close:hover svg {
+  fill: #ffffff;
+}
+
 .text-center-vertical {
   display: inline-block;
   vertical-align: middle;
@@ -496,3 +575,4 @@ div.title > span {
   }
 }
 </style>
+

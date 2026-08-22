@@ -7,7 +7,7 @@ import { app, BrowserWindow, clipboard, dialog, nativeTheme, shell, ipcMain } fr
 import type { BrowserWindowConstructorOptions } from 'electron'
 import { isChildOfDirectory } from 'common/filesystem/paths'
 import type { IUserPreferences } from '@shared/types/preferences'
-import { isLinux, isOsx, isWindows } from '../config'
+import { isHarmonyOS, isLinux, isOsx, isWindows } from '../config'
 import parseArgs from '../cli/parser'
 import { normalizeAndResolvePath } from '../filesystem'
 import { normalizeMarkdownPath } from '../filesystem/markdown'
@@ -75,6 +75,7 @@ class App {
     app.on('second-instance', (_event, argv, workingDirectory) => {
       const { _openFilesCache, _windowManager } = this
       const args = parseArgs(argv.slice(1)) as CliArgs
+      console.error('[diag] second-instance argv =', JSON.stringify(argv.slice(1)), 'wd =', workingDirectory)
 
       const buf: PathInfo[] = []
       for (const pathname of args._) {
@@ -83,7 +84,13 @@ class App {
           continue
         }
 
-        const info = normalizeMarkdownPath(path.resolve(workingDirectory, pathname))
+        // The HarmonyOS file-open intent delivers a URL-encoded file:// URI
+        // (e.g. file:///storage/.../%E6%B5%8B.md) instead of a raw path; strip
+        // the scheme and percent-decode so the file can be resolved and opened.
+        const candidate = pathname.startsWith('file://')
+          ? decodeURIComponent(pathname.replace(/^file:\/\//, ''))
+          : pathname
+        const info = normalizeMarkdownPath(path.resolve(workingDirectory, candidate))
         if (info) {
           buf.push(info as PathInfo)
         }
@@ -110,6 +117,13 @@ class App {
     app.on('ready', this.ready)
 
     app.on('window-all-closed', () => {
+      // The HarmonyOS Electron runtime can emit this event when a secondary
+      // window (e.g. the preferences window) closes even though other windows
+      // are still open. Guard against quitting the whole application.
+      if (isHarmonyOS && this._windowManager.windowCount > 0) {
+        log.warn('window-all-closed fired while windows remain; ignoring.')
+        return
+      }
       // Close all the image path watcher
       for (const watcher of watchers.values()) {
         watcher.close()
@@ -239,13 +253,20 @@ class App {
     }
 
     if (args._.length) {
+      console.error('[diag] first-launch args._ =', JSON.stringify(args._))
       for (const pathname of args._) {
         // Ignore all unknown flags
         if (pathname.startsWith('--')) {
           continue
         }
 
-        const info = normalizeMarkdownPath(pathname)
+        // The HarmonyOS file-open intent delivers a URL-encoded file:// URI
+        // (e.g. file:///storage/.../%E6%B5%8B.md) instead of a raw path; strip
+        // the scheme and percent-decode so the file can be resolved and opened.
+        const candidate = pathname.startsWith('file://')
+          ? decodeURIComponent(pathname.replace(/^file:\/\//, ''))
+          : pathname
+        const info = normalizeMarkdownPath(candidate)
         if (info) {
           _openFilesCache.push(info as PathInfo)
         }
@@ -667,6 +688,11 @@ class App {
 
     ipcMain.on('app-create-editor-window', () => {
       this._createEditorWindow()
+    })
+
+    // Diagnostic: renderer confirms it received the knock image IPC.
+    ipcMain.on('mt::knock-image-confirm', (_e, payload) => {
+      log.info(`[HarmonyShare] renderer confirmed knock image: ${String(payload)}`)
     })
 
     onInternalChannel('screen-capture', async(win: BrowserWindow) => {

@@ -116,6 +116,11 @@ appController.init()
 
 // Quit when all windows are closed (except on macOS)
 app.on('window-all-closed', () => {
+  if (process.platform === 'openharmony') {
+    // The HarmonyOS runtime may emit this when a secondary window closes
+    // while other windows remain; the App controller already guards quitting.
+    return
+  }
   if (process.platform !== 'darwin') {
     app.quit()
   }

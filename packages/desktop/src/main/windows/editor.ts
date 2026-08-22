@@ -1,5 +1,5 @@
 import path from 'path'
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, screen, systemPreferences } from 'electron'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import log from 'electron-log'
 import windowStateKeeper from 'electron-window-state'
@@ -7,7 +7,7 @@ import { isChildOfDirectory, isSamePathSync } from 'common/filesystem/paths'
 import BaseWindow, { WindowLifecycle, WindowType } from './base'
 import type Accessor from '../app/accessor'
 import { ensureWindowPosition, zoomIn, zoomOut } from './utils'
-import { TITLE_BAR_HEIGHT, editorWinOptions, isLinux, isOsx } from '../config'
+import { TITLE_BAR_HEIGHT, editorWinOptions, isHarmonyOS, isLinux, isOsx } from '../config'
 import { showEditorContextMenu } from '../contextMenu/editor'
 import { loadMarkdownFile } from '../filesystem/markdown'
 import { switchLanguage } from '../spellchecker'
@@ -98,12 +98,35 @@ class EditorWindow extends BaseWindow {
       defaultHeight: 800
     })
 
-    const { x, y, width, height } = ensureWindowPosition(mainWindowState)
-    const winOptions: BrowserWindowConstructorOptions = Object.assign(
-      { x, y, width, height },
-      editorWinOptions,
-      options
-    )
+    let winOptions: BrowserWindowConstructorOptions
+    if (isHarmonyOS) {
+      // Sync the editor window with the ability (start) window: the ETS side
+      // writes the physical window rect to <userData>/start_window_rect.json,
+      // which we convert to logical (DIP) size/position so the web content
+      // replaces the blank start window without any visible jump.
+      winOptions = Object.assign({}, editorWinOptions, options, { useContentSize: false })
+      try {
+        const rectFile = path.join(app.getPath('userData'), 'start_window_rect.json')
+        if (fs.existsSync(rectFile)) {
+          const data = JSON.parse(fs.readFileSync(rectFile, 'utf8')) as {
+            x: number
+            y: number
+            width: number
+            height: number
+          }
+          if (data.width > 0 && data.height > 0) {
+            const scale = screen.getPrimaryDisplay().scaleFactor || 1
+            winOptions.x = Math.round(data.x / scale)
+            winOptions.y = Math.round(data.y / scale)
+            winOptions.width = Math.round(data.width / scale)
+            winOptions.height = Math.round(data.height / scale)
+          }
+        }
+      } catch {}
+    } else {
+      const { x, y, width, height } = ensureWindowPosition(mainWindowState)
+      winOptions = Object.assign({ x, y, width, height }, editorWinOptions, options)
+    }
     if (isLinux) {
       winOptions.icon = path.join(process.cwd(), 'static', 'logo-96px.png')
     }
@@ -121,7 +144,11 @@ class EditorWindow extends BaseWindow {
     const resolvedSideBarVisibility = restoreLayoutState ? !!sideBarVisibility : false
 
     // Enable native or custom/frameless window and titlebar
-    if (!isOsx) {
+    if (isHarmonyOS) {
+      // HarmonyOS Electron runtime: frameless with hidden system title bar.
+      winOptions.titleBarStyle = 'hidden'
+      winOptions.frame = false
+    } else if (!isOsx) {
       winOptions.titleBarStyle = 'default'
       if (titleBarStyle === 'native') {
         winOptions.frame = true
@@ -164,6 +191,50 @@ class EditorWindow extends BaseWindow {
     win.webContents.once('did-finish-load', () => {
       this.lifecycle = WindowLifecycle.READY
       this.emit('window-ready')
+
+      // Notify the ArkTS loading overlay that the web content is ready.
+      if (isHarmonyOS) {
+        try {
+          ;(systemPreferences as unknown as {
+            callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
+          }).callArkTSFunction('MarkText.OnContentReady', 'void', [])
+        } catch (error) {
+          log.error('Failed to call ArkTS OnContentReady:', error)
+        }
+
+        // Register the "knock to share" image receiver for this editor window.
+        // The phone taps the window and the image lands in the app sandbox; the
+        // ETS side reports the sandbox file URI back through the JS callback.
+        try {
+          const winId = this.id
+          ;(systemPreferences as unknown as {
+            callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
+          }).callArkTSFunction('HarmonyShare.RegisterDataReceive', 'void', [
+            winId,
+            (uri: string) => {
+              if (!win || win.isDestroyed()) return
+              // ETS sends `pending:` first so the renderer can insert a loading
+              // placeholder while the slow HEIC->JPEG conversion runs.
+              if (uri === 'pending:') {
+                win.webContents.send('mt::knock-image-received', { path: 'knock://pending' })
+                return
+              }
+              log.info(`[HarmonyShare] knock callback fired, uri=${uri}`)
+              // Read the converted JPEG as base64 and embed as a data URL so the
+              // renderer never depends on webview file access to the sandbox.
+              try {
+                const buf = fs.readFileSync(uri)
+                const dataUrl = `data:image/jpeg;base64,${buf.toString('base64')}`
+                win.webContents.send('mt::knock-image-received', { path: dataUrl })
+              } catch (error) {
+                log.error('[HarmonyShare] failed to read knock image as base64:', error)
+              }
+            }
+          ])
+        } catch (error) {
+          log.error('Failed to register HarmonyShare dataReceive:', error)
+        }
+      }
 
       // Restore and focus window
       this.bringToFront()
@@ -267,6 +338,17 @@ class EditorWindow extends BaseWindow {
       this.lifecycle = WindowLifecycle.QUITTED
       this.emit('window-closed')
 
+      // Release the HarmonyShare knock receiver bound to this window.
+      if (isHarmonyOS) {
+        try {
+          ;(systemPreferences as unknown as {
+            callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
+          }).callArkTSFunction('HarmonyShare.UnregisterDataReceive', 'void', [this.id])
+        } catch (error) {
+          log.error('Failed to unregister HarmonyShare dataReceive:', error)
+        }
+      }
+
       // Free window reference
       win = null
     })
@@ -275,7 +357,12 @@ class EditorWindow extends BaseWindow {
     win.loadURL(this._buildUrlString(this.id, env, preferences))
     win.setSheetOffset(TITLE_BAR_HEIGHT)
 
-    mainWindowState.manage(win)
+    if (!isHarmonyOS) {
+      // On HarmonyOS the window inherits the ability (start window) size, so
+      // restoring the previously-saved window state would resize it and cause
+      // a visible jump on launch.
+      mainWindowState.manage(win)
+    }
 
     // Disable application menu shortcuts because we want to handle key bindings ourself.
     win.webContents.setIgnoreMenuShortcuts(true)
@@ -611,6 +698,13 @@ class EditorWindow extends BaseWindow {
               }
             })
             .catch((err: Error) => {
+              if (isHarmonyOS) {
+                // Files opened via the "Open with" intent are not persistently
+                // accessible, so a session restore of them fails with EPERM.
+                // Silently drop the tab instead of surfacing an error.
+                bufferState.tabs = bufferState.tabs.filter((t) => t !== tab)
+                return
+              }
               const { message, stack } = err
               tab.isSaved = false // Set to false as base file could not be found, needs saving
               log.error(`[ERROR] Cannot open file: ${message}\n\n${stack}`)

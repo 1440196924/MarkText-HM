@@ -328,6 +328,7 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
 
     const { id: windowId } = browserWindow
     const { _appMenu, _windows } = this
+    console.error('[diag] forceClose windowId =', windowId, 'windows before =', _windows.size)
 
     // Free watchers used by this window
     this._watcher.unwatchByWindowId(windowId)
@@ -461,6 +462,7 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
     })
 
     onInternalChannel('window-close-by-id', (id: number) => {
+      console.error('[diag] window-close-by-id received, id =', id)
       this.forceCloseById(id)
     })
     onInternalChannel('window-reload-by-id', (id: number) => {

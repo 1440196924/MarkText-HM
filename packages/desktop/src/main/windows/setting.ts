@@ -5,7 +5,7 @@ import { electronLocalshortcut } from '@hfelix/electron-localshortcut'
 import BaseWindow, { WindowLifecycle, WindowType, type EnvLike, type PreferenceLike } from './base'
 import type Accessor from '../app/accessor'
 import { centerWindowOptions } from './utils'
-import { TITLE_BAR_HEIGHT, preferencesWinOptions, isLinux, isOsx } from '../config'
+import { TITLE_BAR_HEIGHT, preferencesWinOptions, isHarmonyOS, isLinux, isOsx } from '../config'
 import log from 'electron-log'
 
 class SettingWindow extends BaseWindow {
@@ -46,7 +46,19 @@ class SettingWindow extends BaseWindow {
 
     // Enable native or custom/frameless window and titlebar
     const { titleBarStyle, theme } = preferences.getAll()
-    if (!isOsx) {
+    if (isHarmonyOS) {
+      // Align the preferences window options with the (working) editor window
+      // options on HarmonyOS. The extra flags in preferencesWinOptions
+      // (minimizable/fullscreenable/thickFrame) make the runtime crash when
+      // the secondary ability is torn down on close.
+      delete winOptions.minimizable
+      delete winOptions.fullscreenable
+      delete winOptions.fullscreen
+      delete winOptions.thickFrame
+      delete winOptions.resizable
+      winOptions.titleBarStyle = 'hidden'
+      winOptions.frame = false
+    } else if (!isOsx) {
       winOptions.titleBarStyle = 'default'
       if (titleBarStyle === 'native') {
         winOptions.frame = true
@@ -55,6 +67,7 @@ class SettingWindow extends BaseWindow {
 
     winOptions.backgroundColor = this._getPreferredBackgroundColor(theme)
     let win: BrowserWindow | null = (this.browserWindow = new BrowserWindow(winOptions))
+    ;(win as unknown as { __marktextSettings: boolean }).__marktextSettings = true
 
     win.webContents.on('did-fail-load', (_event, code, desc, url) => {
       log.error(`did-fail-load ${code} ${desc} @ ${url}`)

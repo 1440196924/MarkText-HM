@@ -51,24 +51,27 @@ const computeIsUpdatable = (): boolean => {
   return false
 }
 
-const buildBootInfo = (): BootInfo => ({
-  platform: process.platform,
-  arch: process.arch,
-  versions: {
-    node: process.versions.node,
-    chrome: process.versions.chrome,
-    electron: process.versions.electron
-  },
-  env: pickEnv(),
-  paths: {
-    ripgrepBinary: resolveRipgrepBinary(),
-    resources: process.resourcesPath,
-    userData: app.getPath('userData'),
-    cwd: process.cwd()
-  },
-  isUpdatable: computeIsUpdatable(),
-  MARKDOWN_INCLUSIONS: [...MARKDOWN_INCLUSIONS]
-})
+const buildBootInfo = (): BootInfo => {
+  console.error('[diag] process.platform =', process.platform, '| versions =', JSON.stringify(process.versions))
+  return ({
+    platform: process.platform,
+    arch: process.arch,
+    versions: {
+      node: process.versions.node,
+      chrome: process.versions.chrome,
+      electron: process.versions.electron
+    },
+    env: pickEnv(),
+    paths: {
+      ripgrepBinary: resolveRipgrepBinary(),
+      resources: process.resourcesPath,
+      userData: app.getPath('userData'),
+      cwd: process.cwd()
+    },
+    isUpdatable: computeIsUpdatable(),
+    MARKDOWN_INCLUSIONS: [...MARKDOWN_INCLUSIONS]
+  })
+}
 
 let cached: BootInfo | null = null
 

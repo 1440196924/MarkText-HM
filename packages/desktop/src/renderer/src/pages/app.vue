@@ -196,6 +196,7 @@ onMounted(async () => {
   editorStore.LISTEN_FOR_RELOAD_IMAGES()
   editorStore.LISTEN_FOR_CONTEXT_MENU()
   editorStore.LISTEN_FOR_STATE_REPLACE()
+  editorStore.LISTEN_FOR_KNOCK_IMAGE()
 
   // module: notification
   notificationStore.listenForNotification()

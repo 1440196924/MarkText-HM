@@ -283,6 +283,8 @@ let printer: Printer | null = null
 let spellchecker: any = null
 let switchLanguageCommand: SpellcheckerLanguageCommand | null = null
 let imageViewer: SimpleImageViewer | null = null
+// Tokens of knock-share loading placeholders awaiting their real data URL.
+const pendingKnockTokens = new Set<string>()
 // The engine has no `scroll` event; we listen on the scroll container directly.
 let scrollHandler: ((e: Event) => void) | null = null
 
@@ -1119,7 +1121,44 @@ const handleCopyPaste = (type: unknown) => {
 
 const insertImage = (src: unknown) => {
   if (!sourceCode.value) {
-    editor.value && editor.value.insertImage({ src })
+    const ed = editor.value
+    if (!ed) return
+    // HarmonyOS knock-share steals focus from the editor, which clears
+    // `activeContentBlock` and makes `insertImage` a silent no-op. Re-focus
+    // first so the cursor/selection is restored before inserting.
+    if (!ed.hasFocus()) {
+      ed.focus()
+    }
+    ed.insertImage({ src })
+  }
+}
+
+// HarmonyOS knock-share: insert a loading placeholder immediately (the HEIC
+// -> JPEG conversion + base64 transfer can take seconds), then swap in the
+// real data URL once the main process delivers it.
+const insertKnockPlaceholder = (token: unknown) => {
+  const src = String(token)
+  const ed = editor.value
+  if (!ed || !src) return
+  if (!ed.hasFocus()) ed.focus()
+  ed.insertImage({ src })
+  // Remember which placeholder token we inserted so we can replace it later.
+  pendingKnockTokens.add(src)
+}
+
+const replaceKnockImage = (dataUrl: unknown) => {
+  const replacement = String(dataUrl)
+  const ed = editor.value
+  if (!ed || !replacement) return
+  const markdown = ed.getMarkdown()
+  let next = markdown
+  pendingKnockTokens.forEach((token) => {
+    // Placeholder renders as `![alt](token)`; swap the src in place.
+    next = next.split(`](${token})`).join(`](${replacement})`)
+  })
+  if (next !== markdown) {
+    ed.setContent(next)
+    pendingKnockTokens.clear()
   }
 }
 
@@ -1834,6 +1873,8 @@ onMounted(() => {
   bus.on('replaceValue', handReplace)
   bus.on('find-action', handleFindAction)
   bus.on('insert-image', insertImage)
+  bus.on('insert-knock-placeholder', insertKnockPlaceholder)
+  bus.on('replace-knock-image', replaceKnockImage)
   bus.on('image-uploaded', handleUploadedImage)
   bus.on('file-changed', handleFileChange)
   bus.on('flush-active-editor', flushActiveEditor)
@@ -1987,6 +2028,8 @@ onBeforeUnmount(() => {
   bus.off('replaceValue', handReplace)
   bus.off('find-action', handleFindAction)
   bus.off('insert-image', insertImage)
+  bus.off('insert-knock-placeholder', insertKnockPlaceholder)
+  bus.off('replace-knock-image', replaceKnockImage)
   bus.off('image-uploaded', handleUploadedImage)
   bus.off('file-changed', handleFileChange)
   bus.off('flush-active-editor', flushActiveEditor)
