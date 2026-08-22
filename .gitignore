@@ -1,12 +1,35 @@
+# --- Dependencies ---
 /node_modules
 /oh_modules
-/local.properties
-/.idea
+
+# --- Build outputs ---
 **/build
 /.hvigor
+/appanalyzer
+/.appanalyzer
 .cxx
 /.clangd
 /.clang-format
 /.clang-tidy
 **/.test
-/.appanalyzer
+
+# --- Local / IDE ---
+/local.properties
+/.idea
+
+# --- TypeScript cache ---
+.cache/
+
+# --- Ported Electron app build artifacts (mirrored into resfile by scripts) ---
+# web/ is the renderer bundle output; main.js/preload.js/package.json are the
+# esbuild/patch outputs; static/ is a mirror of the resfile copy. Keep the
+# resfile copy tracked; ignore the intermediate mirror. shims/ is source.
+/scripts/port/app/web/
+/scripts/port/app/main.js
+/scripts/port/app/preload.js
+/scripts/port/app/package.json
+/scripts/port/app/static/
+/web_engine/src/main/resources/resfile/resources/app/web/
+/web_engine/src/main/resources/resfile/resources/app/main.js
+/web_engine/src/main/resources/resfile/resources/app/preload.js
+/web_engine/src/main/resources/resfile/resources/app/package.json
