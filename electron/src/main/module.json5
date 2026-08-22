@@ -1,6 +1,6 @@
 {
   "module": {
-    "name": "electron",
+    "name": "marktext",
     "type": "entry",
     "srcEntry": "./ets/Application/AbilityStage.ets",
     "description": "$string:module_desc",
