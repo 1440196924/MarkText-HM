@@ -37,6 +37,7 @@ import { RunningLockAdapterBind } from '../jsbindings/RunningLockAdapterBind';
 import { ScreenshotAdapterBind } from '../jsbindings/ScreenshotAdapterBind';
 import { ShapeDetectionAdapterBind } from '../jsbindings/ShapeDetectionAdapterBind';
 import { ShareAdapterBind } from '../jsbindings/ShareAdapterBind';
+import { HarmonyShareAdapterBind } from '../jsbindings/HarmonyShareAdapterBind';
 import { SpeechAdapterBind } from '../jsbindings/SpeechAdapterBind';
 import { SubWindowAdapterBind } from '../jsbindings/SubWindowAdapterBind';
 import { SystemFloatingWindowAdapterBind } from './SystemFloatingWindowAdapterBind';
@@ -80,6 +81,7 @@ export class JsBindingMethod {
     ScreenshotAdapterBind.bind();
     ShapeDetectionAdapterBind.bind();
     ShareAdapterBind.bind();
+    HarmonyShareAdapterBind.bind();
     SpeechAdapterBind.bind();
     StatusBarManagerAdapterBind.bind();
     SubWindowAdapterBind.bind();

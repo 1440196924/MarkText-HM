@@ -32220,6 +32220,29 @@ var EditorWindow = class extends BaseWindow {
         } catch (error) {
           log.error("Failed to call ArkTS OnContentReady:", error);
         }
+        try {
+          const winId = this.id;
+          electron.systemPreferences.callArkTSFunction("HarmonyShare.RegisterDataReceive", "void", [
+            winId,
+            (uri2) => {
+              if (!win2 || win2.isDestroyed()) return;
+              if (uri2 === "pending:") {
+                win2.webContents.send("mt::knock-image-received", { path: "knock://pending" });
+                return;
+              }
+              log.info(`[HarmonyShare] knock callback fired, uri=${uri2}`);
+              try {
+                const buf = fs.readFileSync(uri2);
+                const dataUrl = `data:image/jpeg;base64,${buf.toString("base64")}`;
+                win2.webContents.send("mt::knock-image-received", { path: dataUrl });
+              } catch (error) {
+                log.error("[HarmonyShare] failed to read knock image as base64:", error);
+              }
+            }
+          ]);
+        } catch (error) {
+          log.error("Failed to register HarmonyShare dataReceive:", error);
+        }
       }
       this.bringToFront();
       const lineEnding2 = preferences.getPreferredEol();
@@ -32298,6 +32321,14 @@ var EditorWindow = class extends BaseWindow {
     win2.on("closed", () => {
       this.lifecycle = WindowLifecycle.QUITTED;
       this.emit("window-closed");
+      if (isHarmonyOS) {
+        try {
+          ;
+          electron.systemPreferences.callArkTSFunction("HarmonyShare.UnregisterDataReceive", "void", [this.id]);
+        } catch (error) {
+          log.error("Failed to unregister HarmonyShare dataReceive:", error);
+        }
+      }
       win2 = null;
     });
     this.lifecycle = WindowLifecycle.LOADING;
@@ -33194,6 +33225,9 @@ var App = class {
     });
     electron.ipcMain.on("app-create-editor-window", () => {
       this._createEditorWindow();
+    });
+    electron.ipcMain.on("mt::knock-image-confirm", (_e, payload) => {
+      log.info(`[HarmonyShare] renderer confirmed knock image: ${String(payload)}`);
     });
     onInternalChannel("screen-capture", async (win2) => {
       if (isOsx$1) {
