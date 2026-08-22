@@ -25,7 +25,7 @@
 ### 目录结构
 
 ```
-D:\Code\ArkTs\MarkText\
+.
 ├─ AppScope\            # 应用级配置（图标、bundleName）
 ├─ electron\            # 鸿蒙入口模块（EntryAbility、窗口页面）
 ├─ web_engine\          # web 引擎运行时（Electron 兼容层，来自 Bruno）
@@ -120,7 +120,7 @@ git -C vendor/marktext push shared port/harmony
 submodule 内部 remote：
 - `origin` → https://github.com/marktext/marktext.git（上游）
 - `shared` → https://github.com/1440196924/MarkText-HM.git（共享）
-- `local` → `D:\Code\OpenSource\marktext`（可选，本机原始克隆）
+- `local` → 本机原始克隆路径（可选，移植补丁在本机的唯一来源）
 
 ## 常见问题
 
