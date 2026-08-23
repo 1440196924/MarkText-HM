@@ -480,6 +480,7 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
     })
     onInternalChannel('window-toggle-always-on-top', (win: IBrowserWindow) => {
       const flag = !win.isAlwaysOnTop()
+      log.info(`[AlwaysOnTop] toggle win=${win.id} flag=${flag}`)
       win.setAlwaysOnTop(flag)
       this._appMenu.updateAlwaysOnTopMenu(win.id, flag)
 
