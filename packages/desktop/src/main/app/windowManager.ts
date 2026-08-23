@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, systemPreferences } from 'electron'
 import type { BrowserWindow as IBrowserWindow } from 'electron'
 import log from 'electron-log'
 import { TypedEmitter } from '@shared/types/typedEmitter'
@@ -415,6 +415,13 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
       const flag = !win.isAlwaysOnTop()
       win.setAlwaysOnTop(flag)
       this._appMenu.updateAlwaysOnTopMenu(win.id, flag)
+      try {
+        ;(systemPreferences as unknown as {
+          callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
+        }).callArkTSFunction('AppWindow.SetAlwaysOnTop', 'void', [win.id, flag])
+      } catch (error) {
+        log.error('Failed to call ArkTS SetAlwaysOnTop:', error)
+      }
     })
 
     // --- local events ---------------
@@ -475,6 +482,17 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
       const flag = !win.isAlwaysOnTop()
       win.setAlwaysOnTop(flag)
       this._appMenu.updateAlwaysOnTopMenu(win.id, flag)
+
+      // The libelectron runtime does not implement Electron's setAlwaysOnTop
+      // natively, so forward the request to the ArkTS window adapter which
+      // calls window.setWindowTopmost (the HarmonyOS equivalent).
+      try {
+        ;(systemPreferences as unknown as {
+          callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
+        }).callArkTSFunction('AppWindow.SetAlwaysOnTop', 'void', [win.id, flag])
+      } catch (error) {
+        log.error('Failed to call ArkTS SetAlwaysOnTop:', error)
+      }
     })
 
     onInternalChannel('broadcast-preferences-changed', (prefs: Record<string, unknown>) => {
