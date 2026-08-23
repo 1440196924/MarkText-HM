@@ -418,7 +418,7 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
       try {
         ;(systemPreferences as unknown as {
           callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
-        }).callArkTSFunction('AppWindow.SetAlwaysOnTop', 'void', [win.id, flag])
+        }).callArkTSFunction('MarkText.SetAlwaysOnTop', 'void', [flag])
       } catch (error) {
         log.error('Failed to call ArkTS SetAlwaysOnTop:', error)
       }
@@ -483,12 +483,12 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
       log.info(`[AlwaysOnTop] toggle win=${win.id} flag=${flag}`)
 
       // The libelectron runtime does not implement Electron's setAlwaysOnTop
-      // natively, so forward the request to the ArkTS window adapter which
-      // calls window.setWindowTopmost (the HarmonyOS equivalent).
+      // natively, so forward the request to ArkTS (MarkText.SetAlwaysOnTop
+      // bound in NodeHandleWindow.ets), which calls window.setWindowTopmost.
       try {
         ;(systemPreferences as unknown as {
           callArkTSFunction: (name: string, returnType: string, params: unknown[]) => void
-        }).callArkTSFunction('AppWindow.SetAlwaysOnTop', 'void', [win.id, flag])
+        }).callArkTSFunction('MarkText.SetAlwaysOnTop', 'void', [flag])
       } catch (error) {
         log.error('Failed to call ArkTS SetAlwaysOnTop:', error)
       }
