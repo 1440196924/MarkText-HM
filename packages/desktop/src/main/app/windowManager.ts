@@ -481,8 +481,6 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
     onInternalChannel('window-toggle-always-on-top', (win: IBrowserWindow) => {
       const flag = !win.isAlwaysOnTop()
       log.info(`[AlwaysOnTop] toggle win=${win.id} flag=${flag}`)
-      win.setAlwaysOnTop(flag)
-      this._appMenu.updateAlwaysOnTopMenu(win.id, flag)
 
       // The libelectron runtime does not implement Electron's setAlwaysOnTop
       // natively, so forward the request to the ArkTS window adapter which
@@ -494,6 +492,13 @@ class WindowManager extends TypedEmitter<WindowManagerEvents> {
       } catch (error) {
         log.error('Failed to call ArkTS SetAlwaysOnTop:', error)
       }
+
+      try {
+        win.setAlwaysOnTop(flag)
+      } catch (error) {
+        log.error('[AlwaysOnTop] win.setAlwaysOnTop failed:', error)
+      }
+      this._appMenu.updateAlwaysOnTopMenu(win.id, flag)
     })
 
     onInternalChannel('broadcast-preferences-changed', (prefs: Record<string, unknown>) => {
