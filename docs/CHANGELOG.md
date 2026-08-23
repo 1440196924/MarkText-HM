@@ -4,6 +4,19 @@
 
 ## 2026-08-23
 
+### 修复：Always on Top（窗口置顶）无效
+
+**现象**：菜单/界面触发"Always on Top"后窗口不置顶，且调用时可能卡死界面。
+
+**根因**：MarkText 主进程调用 Electron 的 `win.setAlwaysOnTop()`，但本移植使用的 libelectron（Bruno web_engine）**未实现该 API**——C++ 侧无对应实现，无法桥接到鸿蒙窗口能力，置顶自然无效。
+
+**修改**：
+1. 主进程 `windowManager.ts` 的 toggle 处理中，除了原生 `win.setAlwaysOnTop` 外，通过 `systemPreferences.callArkTSFunction` 转发到 ArkTS。
+2. 在 `electron/src/main/ets/pages/NodeHandleWindow.ets` 绑定 `MarkText.SetAlwaysOnTop(onTop)`，内部用 `window.getLastWindow(context).setWindowTopmost(onTop)` 实现鸿蒙置顶。
+3. `electron/src/main/module.json5` 声明 `ohos.permission.WINDOW_TOPMOST`（system_grant，安装时自动授予），并补充对应权限原因文案（base/en_US/zh_CN 三处 string.json）。
+
+**注意事项**：优先用 `MarkText.SetAlwaysOnTop` 绑定（与 `MarkText.OnContentReady` 同模式，已验证可用）；`AppWindow.SetAlwaysOnTop` 绑定调用会导致主进程阻塞/界面卡死，勿用。
+
 ### 修复：保存到桌面报"操作无权限"（EPERM）
 
 **现象**：新建 Markdown 保存到桌面后，MarkText 尝试重新打开保存的文件时报 EPERM（`operation not permitted`），实际是保存本身失败。
