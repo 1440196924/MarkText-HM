@@ -31,6 +31,7 @@ import { NativeContext, WindowBound } from '../interface/CommonInterface';
 import LogUtil from '../utils/LogUtil';
 import JsBindingUtils from '../utils/JsBindingUtils';
 import { NodeContent, window } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 import fs from '@ohos.file.fs';
 import { ConfigData, ContextType } from '../common/Constants';
 import { NodeHandleManager } from '../common/NodeHandleManager';
@@ -146,17 +147,32 @@ export struct WebNodeHandleWindow {
       // Persist the ability window rect so the Electron main process can
       // initialize the editor window at the same size/position and avoid a
       // visible jump between the start window and the web content.
+      // Write to both the application-level and the UIAbility-level files dir:
+      // Electron's `app.getPath('userData')` may resolve to either one (the
+      // UIAbility sandbox path embeds the module name), so cover both.
       try {
-        const appContext = getContext(this).getApplicationContext();
-        const rectFile = appContext.filesDir + '/start_window_rect.json';
-        const file = fs.openSync(rectFile, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-        fs.writeSync(file.fd, JSON.stringify({
+        const payload = JSON.stringify({
           x: windowRect.left,
           y: windowRect.top,
           width: windowRect.width,
           height: windowRect.height
-        }));
-        fs.closeSync(file);
+        });
+        const ctx = getContext(this) as common.UIAbilityContext;
+        const dirs: string[] = [];
+        dirs.push(ctx.getApplicationContext().filesDir);
+        if (ctx.filesDir && ctx.filesDir !== dirs[0]) {
+          dirs.push(ctx.filesDir);
+        }
+        for (let i = 0; i < dirs.length; i++) {
+          const rectFile = dirs[i] + '/start_window_rect.json';
+          // TRUNC is required: without it a shorter new payload leaves the
+          // tail of the previous content, corrupting the JSON and making the
+          // main process fall back to the default window position.
+          const file = fs.openSync(rectFile, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC);
+          fs.writeSync(file.fd, payload);
+          fs.closeSync(file);
+          LogUtil.info(WebNodeHandleWindow.TAG, `write start_window_rect.json -> ${rectFile}`);
+        }
       } catch (error) {
         LogUtil.error(WebNodeHandleWindow.TAG, `write start_window_rect.json failed: ${JSON.stringify(error)}`);
       }
