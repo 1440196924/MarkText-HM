@@ -4,6 +4,23 @@
 
 ## 2026-08-23
 
+### 调整：帮助菜单与关于页
+
+**帮助菜单**（`packages/desktop/src/main/menu/templates/help.ts`）：
+- 移除「更新日志」「报告错误」「提问」三项。
+- 「关注我们」链接改为 B 站：`https://space.bilibili.com/297193944`。
+- 「查看源码」链接改为：`https://github.com/1440196924/MarkText-HM`。
+
+**关于页**（`packages/desktop/src/renderer/src/components/about/index.vue`）：
+- 「版本号：1.0.0」——鸿蒙移植版本号。
+- 「内核版本号：{x.y.z}」——原 MarkText 上游版本。
+- 「移植者：山东大蒜王师傅」——可点击跳转 B 站个人页。
+
+### 工程化：补丁历史整理
+
+`port/harmony` 分支的移植补丁整理为 2 个提交（基础适配 + 运行时修复），
+移除调试提交与残留日志，便于上游更新时 rebase 应用。
+
 ### 修复：Always on Top（窗口置顶）无效
 
 **现象**：菜单/界面触发"Always on Top"后窗口不置顶，且调用时可能卡死界面。
