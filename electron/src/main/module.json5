@@ -123,6 +123,18 @@
         "type": "embeddedUI",
         "exported": false,
       }
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.WINDOW_TOPMOST",
+        "reason": "$string:permission_reason_topmost",
+        "usedScene": {
+          "abilities": [
+            "EntryAbility"
+          ],
+          "when": "inuse"
+        }
+      }
     ]
   }
 }

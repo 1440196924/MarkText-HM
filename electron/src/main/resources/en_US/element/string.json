@@ -39,6 +39,10 @@
     {
       "name": "TaskManagerAbility_label",
       "value": "TaskManagerAbility"
+    },
+    {
+      "name": "permission_reason_topmost",
+      "value": "Used to keep the MarkText window always on top of other windows"
     }
   ]
 }

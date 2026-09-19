@@ -31,6 +31,9 @@ import { WebNodeHandleWindow } from 'web_engine';
 import CustomChildProcess from '../process/CustomChildProcess';
 import { KeyCode } from '@kit.InputKit';
 import { uiObserver } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
+import { window } from '@kit.ArkUI';
+import { BusinessError } from '@ohos.base';
 import LogUtil from 'web_engine/src/main/ets/utils/LogUtil';
 import JsBindingUtils from 'web_engine/src/main/ets/utils/JsBindingUtils';
  
@@ -53,6 +56,33 @@ try {
   JsBindingUtils.bindFunction('MarkText.OnContentReady', () => {});
 } catch (e) {
   LogUtil.error(TAG, 'bind MarkText.OnContentReady failed: ' + JSON.stringify(e));
+}
+
+// The Electron runtime's win.setAlwaysOnTop is not wired to HarmonyOS, so the
+// main process forwards the toggle here via
+// systemPreferences.callArkTSFunction('MarkText.SetAlwaysOnTop', 'void', [onTop]).
+// The active editor window is resolved lazily from the page context.
+let marktextAppContext: common.UIAbilityContext | undefined = undefined;
+try {
+  JsBindingUtils.bindFunction('MarkText.SetAlwaysOnTop', (onTop: boolean) => {
+    LogUtil.info(TAG, 'MarkText.SetAlwaysOnTop called, onTop=' + onTop);
+    let ctx = marktextAppContext;
+    if (!ctx) {
+      LogUtil.error(TAG, 'MarkText.SetAlwaysOnTop: no app context yet.');
+      return;
+    }
+    window.getLastWindow(ctx).then((win: window.Window) => {
+      win.setWindowTopmost(onTop).then(() => {
+        LogUtil.info(TAG, 'setWindowTopmost success, onTop=' + onTop);
+      }).catch((err: BusinessError) => {
+        LogUtil.error(TAG, 'setWindowTopmost failed: ' + JSON.stringify(err));
+      });
+    }).catch((err: BusinessError) => {
+      LogUtil.error(TAG, 'getLastWindow failed: ' + JSON.stringify(err));
+    });
+  });
+} catch (e) {
+  LogUtil.error(TAG, 'bind MarkText.SetAlwaysOnTop failed: ' + JSON.stringify(e));
 }
  
 CustomChildProcess.toString();
@@ -77,6 +107,7 @@ struct NodeHandleWindow {
   @State density: number = 0;
   
   aboutToAppear(): void {
+    marktextAppContext = getContext(this) as common.UIAbilityContext;
     // registerUpdateStyleFunction
     this.updateStyle.registerUpdateStyleFunction(this.xcomponentId, this.initStyle, (style: IStyleData) => {
       this.backgroundColor_ = `#${style.backgroundColor}`;
