@@ -1,7 +1,9 @@
 import { readlinkSync, ensureDir } from 'fs-extra'
 import path from 'path'
+import { promises as fsPromises } from 'fs'
 import writeFileAtomic from 'write-file-atomic'
 import { isDirectory, isFile, isSymbolicLink } from 'common/filesystem'
+import { isHarmonyOS } from '../config'
 
 /**
  * Normalize the path into an absolute path and resolves the link target if needed.
@@ -45,5 +47,13 @@ export const writeFile = async(
   // write-file-atomic also preserves the target's mode/owner, writes through a
   // symlink to its target, and uses a unique temp name — all of which a plain
   // temp+rename dropped.
+  //
+  // On HarmonyOS the file picker grants write access to the chosen file URI
+  // only — creating a sibling temp file (`<name>.<pid>`) in the same directory
+  // is denied with EPERM. Skip the temp+rename and write the target directly.
+  if (isHarmonyOS) {
+    await fsPromises.writeFile(pathname, content, options)
+    return
+  }
   await writeFileAtomic(pathname, content, options)
 }

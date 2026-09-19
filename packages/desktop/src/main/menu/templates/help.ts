@@ -39,18 +39,12 @@ export default function(): MenuItemConstructorOptions {
       }
     },
     {
-      label: t('menu.help.changelog'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext/releases')
-      }
-    },
-    {
       type: 'separator'
     },
     {
       label: t('menu.help.followUs'),
       click() {
-        shell.openExternal('https://twitter.com/marktextapp')
+        shell.openExternal('https://space.bilibili.com/297193944')
       }
     },
     {
@@ -63,21 +57,9 @@ export default function(): MenuItemConstructorOptions {
       type: 'separator'
     },
     {
-      label: t('menu.help.askQuestion'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext/discussions')
-      }
-    },
-    {
-      label: t('menu.help.reportBug'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext/issues')
-      }
-    },
-    {
       label: t('menu.help.viewSource'),
       click() {
-        shell.openExternal('https://github.com/marktext/marktext')
+        shell.openExternal('https://github.com/1440196924/MarkText-HM')
       }
     },
     {

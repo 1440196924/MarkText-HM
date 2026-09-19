@@ -19,7 +19,21 @@
         </el-col>
         <el-col :span="24">
           <div class="text">
-            {{ store.appVersion }}
+            {{ harmonyVersionLabel }}1.0.0
+          </div>
+        </el-col>
+        <el-col :span="24">
+          <div class="text">
+            {{ kernelVersionLabel }}{{ store.appVersion }}
+          </div>
+        </el-col>
+        <el-col :span="24">
+          <div class="text">
+            {{ porterLabel }}
+            <a
+              class="link"
+              @click="openPorterPage"
+            >{{ porterName }}</a>
           </div>
         </el-col>
         <el-col :span="24">
@@ -50,11 +64,22 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 const name = 'MarkText'
+// HarmonyOS port metadata. `appVersion` is the upstream MarkText (kernel)
+// version; the app itself is versioned 1.0.0 for this port.
+const harmonyVersionLabel = '版本号：'
+const kernelVersionLabel = '内核版本号：'
+const porterLabel = '移植者：'
+const porterName = '山东大蒜王师傅'
+const porterUrl = 'https://space.bilibili.com/297193944'
 const copyright = t('about.copyright', { year: new Date().getFullYear() })
 const copyrightContributors = t('about.copyrightContributors')
 const showAboutDialog = ref(false)
 
 const store = useMainStore()
+
+const openPorterPage = () => {
+  window.electron.shell.openExternal(porterUrl)
+}
 
 const showDialog = () => {
   showAboutDialog.value = true
@@ -95,5 +120,15 @@ onBeforeUnmount(() => {
 
 .about-dialog .text {
   color: var(--floatFontColor);
+}
+
+.about-dialog .link {
+  color: var(--themeColor, #409eff);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.about-dialog .link:hover {
+  text-decoration: underline;
 }
 </style>
